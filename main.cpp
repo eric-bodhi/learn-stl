@@ -3,9 +3,11 @@
 #include <iostream>
 
 int main() {
-    UniquePtr<int> p = makeUnique(10);
-    UniquePtr<int> x = makeUnique(5);
+    UniquePtr<int> p = makeUnique<int>(10);
+    UniquePtr<int> x = makeUnique<int>(5);
 
-    std::cout << *p;
+    p.swap(x);
+
+    std::cout << *p << " " << *x << "\n";
     return 0;
 }

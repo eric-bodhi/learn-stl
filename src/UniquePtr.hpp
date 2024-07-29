@@ -1,20 +1,20 @@
 #pragma once
 
-#include <iostream>
+#include <memory>
+#include <utility>
 
-template <typename T>
+// @TODO Create new default deleter from scratch
+template <typename T, typename Deleter = std::default_delete<T>>
 class UniquePtr {
 private:
     T* ptr;
 
 public:
     explicit UniquePtr(T* rawPtr = nullptr) : ptr(rawPtr) {
-        std::cout << "Ptr Constructed\n";
     }
 
     ~UniquePtr() {
         delete ptr;
-        std::cout << "Ptr deconstructed \n";
     }
 
     UniquePtr& operator=(UniquePtr&& other) {
@@ -22,16 +22,31 @@ public:
             delete ptr;
             ptr = other.ptr;
             other.ptr = nullptr;
-            std::cout << "Moved assignment \n";
         }
     }
 
     T& operator*() {
         return *ptr;
     }
+
+    T* operator->() {
+        return ptr;
+    }
+
+    T* get() {
+        return ptr;
+    }
+
+    const T* get() const {
+        return ptr;
+    }
+
+    void swap(UniquePtr<T>& other) {
+        std::swap(ptr, other.ptr);
+    }
 };
 
-template <typename T>
-UniquePtr<T> makeUnique(T arg) {
-    return UniquePtr(new T(arg));
+template <typename T, typename... Args>
+UniquePtr<T> makeUnique(Args&&... args) {
+    return UniquePtr(new T(std::forward<Args>(args)...));
 }
