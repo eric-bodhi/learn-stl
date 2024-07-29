@@ -3,18 +3,21 @@
 #include <memory>
 #include <utility>
 
-// @TODO Create new default deleter from scratch
+// TODO: Create new default deleter from scratch
 template <typename T, typename Deleter = std::default_delete<T>>
 class UniquePtr {
 private:
     T* ptr;
+    Deleter deleter;
 
 public:
     explicit UniquePtr(T* rawPtr = nullptr) : ptr(rawPtr) {
     }
 
     ~UniquePtr() {
-        delete ptr;
+        if (ptr) {
+            deleter(ptr);
+        }
     }
 
     UniquePtr& operator=(UniquePtr&& other) {
@@ -43,6 +46,15 @@ public:
 
     void swap(UniquePtr<T>& other) {
         std::swap(ptr, other.ptr);
+    }
+
+    // Returns Deleter object
+    Deleter& get_deleter() {
+        return deleter;
+    }
+
+    const Deleter& get_deleter() const {
+        return deleter;
     }
 };
 
