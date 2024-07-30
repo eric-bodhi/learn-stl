@@ -1,6 +1,5 @@
 #pragma once
 
-#include <compare>
 #include <memory>
 #include <ostream>
 #include <utility>
@@ -12,56 +11,63 @@ private:
     D deleter;
 
 public:
+    // Constructor
     explicit UniquePtr(T* rawPtr = nullptr, D d = std::default_delete<T>())
         : ptr(rawPtr), deleter(d) {
     }
 
+    // Destructor
     ~UniquePtr() {
-        if (ptr) {
-            deleter(ptr);
-        }
+        reset();
     }
 
+    // Deleted copy constructor and assignment operator
     UniquePtr(const UniquePtr&) = delete;
+    UniquePtr& operator=(const UniquePtr&) = delete;
 
-    UniquePtr& operator=(UniquePtr&& other) {
+    // Move constructor
+    UniquePtr(UniquePtr&& other) noexcept
+        : ptr(other.ptr), deleter(std::move(other.deleter)) {
+        other.ptr = nullptr;
+    }
+
+    // Move assignment operator
+    UniquePtr& operator=(UniquePtr&& other) noexcept {
         if (this != &other) {
-            deleter(ptr);
+            reset();
             ptr = other.ptr;
+            deleter = std::move(other.deleter);
             other.ptr = nullptr;
         }
+        return *this;
     }
 
-    T* get() {
+    // Member functions
+    T* get() noexcept {
         return ptr;
     }
 
-    const T* get() const {
+    const T* get() const noexcept {
         return ptr;
     }
 
-    void swap(UniquePtr<T>& other) {
-        std::swap(ptr, other.ptr);
-    }
-
-    D& get_deleter() {
+    D& get_deleter() noexcept {
         return deleter;
     }
 
-    const D& get_deleter() const {
+    const D& get_deleter() const noexcept {
         return deleter;
     }
 
     void reset(T* newPtr = nullptr) {
         T* oldPtr = ptr;
         ptr = newPtr;
-
         if (oldPtr) {
             deleter(oldPtr);
         }
     }
 
-    T* release() {
+    T* release() noexcept {
         T* retPtr = ptr;
         ptr = nullptr;
         return retPtr;
@@ -75,19 +81,25 @@ public:
         return *ptr;
     }
 
-    T* operator->() {
+    T* operator->() noexcept {
         return ptr;
     }
 
-    const T* operator->() const {
+    const T* operator->() const noexcept {
         return ptr;
     }
 
-    explicit operator bool() const {
+    explicit operator bool() const noexcept {
         return (ptr != nullptr);
+    }
+
+    void swap(UniquePtr& other) noexcept {
+        std::swap(ptr, other.ptr);
+        std::swap(deleter, other.deleter);
     }
 };
 
+// Non-member functions for comparison
 template <class T1, class D1, class T2, class D2>
 bool operator==(const UniquePtr<T1, D1>& x, const UniquePtr<T2, D2>& y) {
     return x.get() == y.get();
@@ -118,6 +130,7 @@ bool operator>=(const UniquePtr<T1, D1>& x, const UniquePtr<T2, D2>& y) {
     return !(x < y);
 }
 
+// Output stream operator
 template <typename CharT, typename Traits, typename T, typename D>
 std::basic_ostream<CharT, Traits>&
 operator<<(std::basic_ostream<CharT, Traits>& os, const UniquePtr<T, D>& p) {
