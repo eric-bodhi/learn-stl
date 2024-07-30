@@ -3,12 +3,9 @@
 #include <iostream>
 
 int main() {
-    UniquePtr<int> p = makeUnique<int>(10);
-    UniquePtr<int> x = makeUnique<int>(5);
+    auto up = UniquePtr<int[], std::default_delete<int[]>>(10);
+    up[0] = 42;
 
-    p.swap(x);
-
-    std::cout << *p << " " << *x << "\n";
-
+    std::cout << up[0] << "\n";
     return 0;
 }

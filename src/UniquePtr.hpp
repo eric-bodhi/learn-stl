@@ -2,7 +2,9 @@
 
 #include <memory>
 #include <ostream>
+#include <type_traits>
 #include <utility>
+#include <iostream>
 
 template <typename T, typename D = std::default_delete<T>>
 class UniquePtr {
@@ -144,6 +146,104 @@ operator<<(std::basic_ostream<CharT, Traits>& os, const UniquePtr<T, D>& p) {
 
 // std::make_unique equivalent
 template <typename T, typename... Args>
-UniquePtr<T> makeUnique(Args&&... args) {
+UniquePtr<T> makeUnique(Args&&... args)
+    requires(!std::is_array_v<T>)
+{
+    std::cout << "Non-array version\n";
     return UniquePtr<T>(new T(std::forward<Args>(args)...));
+}
+
+template <typename T, typename D>
+class UniquePtr<T[], D> {
+private:
+    T* ptr;
+    D deleter;
+
+public:
+    explicit UniquePtr(size_t n, D d = std::default_delete<T[]>()) : ptr(new T[n]), deleter(d) {
+    }
+
+    ~UniquePtr() {
+        reset();
+    }
+
+    UniquePtr(const UniquePtr&) = delete;
+    UniquePtr& operator=(const UniquePtr&) = delete;
+
+    UniquePtr(UniquePtr&& other) noexcept
+        : ptr(other.ptr), deleter(std::move(other.deleter)) {
+        other.ptr = nullptr;
+    }
+
+    // Member functions
+    T* get() noexcept {
+        return ptr;
+    }
+
+    const T* get() const noexcept {
+        return ptr;
+    }
+
+    D& get_deleter() noexcept {
+        return deleter;
+    }
+
+    const D& get_deleter() const noexcept {
+        return deleter;
+    }
+
+    void reset(T* newPtr = nullptr) {
+        T* oldPtr = ptr;
+        ptr = newPtr;
+        if (oldPtr) {
+            deleter(oldPtr);
+        }
+    }
+
+    T* release() noexcept {
+        T* retPtr = ptr;
+        ptr = nullptr;
+        return retPtr;
+    }
+
+    T& operator[](size_t n) const {
+        return ptr[n];
+    }
+
+    T& operator*() {
+        return *ptr;
+    }
+
+    const T& operator*() const {
+        return *ptr;
+    }
+
+    T* operator->() noexcept {
+        return ptr;
+    }
+
+    const T* operator->() const noexcept {
+        return ptr;
+    }
+
+    explicit operator bool() const noexcept {
+        return (ptr != nullptr);
+    }
+
+    void swap(UniquePtr& other) noexcept {
+        std::swap(ptr, other.ptr);
+        std::swap(deleter, other.deleter);
+    }
+};
+
+template <class T, class D>
+bool operator==(const UniquePtr<T[], D>& x, std::nullptr_t) noexcept {
+    return (*x == nullptr);
+}
+
+template <typename T, typename D = std::default_delete<T[]>>
+UniquePtr<T[], D> makeUnique(size_t n) requires (std::is_array_v<T>) {
+    std::cout << "Array version\n";
+    using ElementType = std::remove_extent_t<T>;
+    return UniquePtr<ElementType[], D>(n);
 }
