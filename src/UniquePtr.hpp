@@ -1,10 +1,10 @@
 #pragma once
 
+#include <iostream>
 #include <memory>
 #include <ostream>
 #include <type_traits>
 #include <utility>
-#include <iostream>
 
 template <typename T, typename D = std::default_delete<T>>
 class UniquePtr {
@@ -144,7 +144,7 @@ operator<<(std::basic_ostream<CharT, Traits>& os, const UniquePtr<T, D>& p) {
     return os;
 }
 
-// std::make_unique equivalent
+// Singular std::make_unique equivalent
 template <typename T, typename... Args>
 UniquePtr<T> makeUnique(Args&&... args)
     requires(!std::is_array_v<T>)
@@ -160,7 +160,8 @@ private:
     D deleter;
 
 public:
-    explicit UniquePtr(size_t n, D d = std::default_delete<T[]>()) : ptr(new T[n]), deleter(d) {
+    explicit UniquePtr(size_t n = 0, D d = std::default_delete<T[]>())
+        : ptr(new T[n]), deleter(d) {
     }
 
     ~UniquePtr() {
@@ -170,9 +171,21 @@ public:
     UniquePtr(const UniquePtr&) = delete;
     UniquePtr& operator=(const UniquePtr&) = delete;
 
+    // Move constructor
     UniquePtr(UniquePtr&& other) noexcept
         : ptr(other.ptr), deleter(std::move(other.deleter)) {
         other.ptr = nullptr;
+    }
+
+    // Move assignment operator
+    UniquePtr& operator=(UniquePtr&& other) noexcept {
+        if (this != &other) {
+            reset();
+            ptr = other.ptr;
+            deleter = std::move(other.deleter);
+            other.ptr = nullptr;
+        }
+        return *this;
     }
 
     // Member functions
@@ -241,9 +254,20 @@ bool operator==(const UniquePtr<T[], D>& x, std::nullptr_t) noexcept {
     return (*x == nullptr);
 }
 
-template <typename T, typename D = std::default_delete<T[]>>
-UniquePtr<T[], D> makeUnique(size_t n) requires (std::is_array_v<T>) {
+template <typename T>
+UniquePtr<T> makeUnique(size_t n)
+    requires(std::is_array_v<T>)
+{
     std::cout << "Array version\n";
     using ElementType = std::remove_extent_t<T>;
-    return UniquePtr<ElementType[], D>(n);
+    return UniquePtr<ElementType[]>(n);
+}
+
+template <typename T, std::size_t N>
+UniquePtr<T> makeUnique()
+    requires(std::is_array_v<T>)
+{
+    std::cout << "Array with known bounds \n";
+    using ElementType = std::remove_extent_t<T>;
+    return UniquePtr<ElementType[]>(N);
 }
