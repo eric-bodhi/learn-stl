@@ -9,5 +9,6 @@ int main() {
     p.swap(x);
 
     std::cout << *p << " " << *x << "\n";
+
     return 0;
 }
