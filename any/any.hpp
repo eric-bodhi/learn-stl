@@ -42,7 +42,7 @@ public:
     Any(const T& value) {
         using DecayedT = std::decay_t<T>;
         if (sizeof(DecayedT) <= BufferSize &&
-            alignof(DecayedT) <= alignof(decltype(storage.buffer))) {
+            alignof(DecayedT) <= alignof(decltype(storage))) {
             new (&storage.buffer) DecayedT(value);
             on_heap = false;
         } else {
@@ -56,7 +56,7 @@ public:
     Any& operator=(const T& value) {
         using DecayedT = std::decay_t<T>;
         if (sizeof(DecayedT) <= BufferSize &&
-            alignof(DecayedT) <= alignof(decltype(storage.buffer))) {
+            alignof(DecayedT) <= alignof(decltype(storage))) {
             new (&storage.buffer) DecayedT(value);
             on_heap = false;
         } else {
