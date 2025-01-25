@@ -1,5 +1,5 @@
 #include <iostream>
-#include "any/any.hpp"
+#include "any/any2.hpp"
 
 int main() {
     Any a = 42;                     // Store an int (uses SBO)
