@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <type_traits>
 #include <typeinfo>
+#include <new>
 
 class Any {
 private:
@@ -28,10 +29,11 @@ private:
         static const FuncTable functions;
     };
 
-    static constexpr size_t BufferSize = 16;
+    static constexpr std::size_t BufferSize = 16;
+    static constexpr std::size_t BufferAlignment = alignof(std::max_align_t);
     union {
         void* heap_ptr;
-        alignas(std::max_align_t) std::byte buffer[BufferSize];
+        alignas(BufferAlignment) std::byte buffer[BufferSize];
     } storage;
 
     bool on_heap;
@@ -40,9 +42,14 @@ private:
 public:
     template <typename T>
     Any(const T& value) {
+        *this = value;
+    }
+
+    template <typename T>
+    Any& operator=(const T& value) {
         using DecayedT = std::decay_t<T>;
         if (sizeof(DecayedT) <= BufferSize &&
-            alignof(DecayedT) <= alignof(decltype(storage))) {
+            alignof(DecayedT) <= BufferAlignment) {
             new (&storage.buffer) DecayedT(value);
             on_heap = false;
         } else {
@@ -51,18 +58,6 @@ public:
         }
 
         funcs = &Handler<DecayedT>::functions;
-    }
-    template <typename T>
-    Any& operator=(const T& value) {
-        using DecayedT = std::decay_t<T>;
-        if (sizeof(DecayedT) <= BufferSize &&
-            alignof(DecayedT) <= alignof(decltype(storage))) {
-            new (&storage.buffer) DecayedT(value);
-            on_heap = false;
-        } else {
-            storage.heap_ptr = new DecayedT(value);
-            on_heap = true;
-        }
         return *this;
     }
 
@@ -87,6 +82,9 @@ public:
         return funcs->type();
     }
 
+    decltype(auto) get() const {
+        return storage;
+    }
     template <typename T>
     friend T* any_cast(Any* any);
 };
@@ -101,7 +99,7 @@ T* any_cast(Any* any) {
         if (any->on_heap) {
             return static_cast<T*>(any->storage.heap_ptr);
         } else {
-            return static_cast<T*>(static_cast<void*>(&any->storage.buffer));
+            return std::launder(reinterpret_cast<T*>(any->storage.buffer));
         }
     }
     return nullptr;
